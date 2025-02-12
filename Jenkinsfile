@@ -2,69 +2,43 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-credentials-id')  // Jenkins credentials for Docker Hub
+        DOCKER_CLI_EXPERIMENTAL = 'enabled'
+        DOCKER_IMAGE = 'react-app'
     }
 
     stages {
-        stage('Clone Repo') {
+        stage('Checkout') {
             steps {
-                // Checkout the appropriate branch from GitHub
-                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/yourusername/yourrepo.git'
+                // Clone the repository from GitHub
+                git branch: 'main', url: 'https://github.com/joe-prakash/devops-build.git'
             }
         }
-
+        
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Set the Docker image tag based on the branch name
-                    def imageTag = "${env.BRANCH_NAME}"
-
-                    // Build the Docker image using the Dockerfile
-                    sh "docker build -t joeprakkash/${imageTag}:latest ."
+                    // Run the build script to create the Docker image
+                    sh './build.sh'
                 }
             }
         }
-
-        stage('Push to Docker Hub') {
+        
+        stage('Push Docker Image') {
             steps {
                 script {
-                    // Determine the Docker Hub repository based on the branch name
-                    def imageTag = "${env.BRANCH_NAME}"
-                    def repo = "joeprakkash/${imageTag}"
-
-                    // Login to Docker Hub
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials-id', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin"
-                    }
-
-                    // Push the Docker image to the appropriate repository
-                    sh "docker push ${repo}:latest"
-                }
-            }
-        }
-
-        stage('Deploy to Server') {
-            when {
-                expression {
-                    return env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'prod'
-                }
-            }
-            steps {
-                script {
-                    // Deploy the image (can be using docker-compose or direct docker commands)
-                    echo "Deploying ${env.BRANCH_NAME} version..."
-                    sh './deploy.sh'
+                    // Docker image will be pushed during the build.sh execution
+                    echo 'Image has been pushed during the build step.'
                 }
             }
         }
     }
-
+    
     post {
         success {
-            echo 'Docker image built, pushed, and deployed successfully.'
+            echo "Docker image has been successfully pushed!"
         }
         failure {
-            echo 'Build, push, or deployment failed.'
+            echo "Build failed!"
         }
     }
 }
